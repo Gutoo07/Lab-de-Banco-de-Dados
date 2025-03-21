@@ -57,3 +57,48 @@ create table consulta_material(
 	foreign key(consultaId) references consulta(id),
 	foreign key(materialId) references material(id)
 )
+go
+--=============================================================
+create procedure sp_valida_rg(@rg varchar(9), @rg_valido bit output)
+as
+
+	set @rg_valido = 1 --comecamos valido e tentaremos invalida-lo
+	if (len(@rg) != 9) --se o RG nao tiver 9 digitos
+	begin
+		set @rg_valido = 0
+	end
+	else --se tiver 9 digitos ele segue testando
+	begin
+		declare	@i		int,
+				@j		int,
+				@res	decimal(7,2)
+		set @i = 1
+		set @j = 9
+		set @res = 0
+
+		while (@i < 9)--vai passar do primeiro ao oitavo digito, multiplicando
+		begin
+			set @res = @res + (cast(substring(@rg, @i, 1) as int) * @j)
+			set @i = @i + 1
+			set @j = @j - 1
+		end
+		if (substring(@rg, 9, 1) != 'X')--se o ultimo digito nao for X
+		begin
+			--comparacao entre resto e digito verificador
+			if ((@res % 11) != cast(substring(@rg, 9, 1) as int))
+			begin
+				set @rg_valido = 0
+			end
+		end
+		else --se o ultimo digito for X, o resto precisa ser = 10
+		begin
+			if ((@res % 11) != 10)--se o resto nao for 10, invalida
+			begin
+				set @rg_valido = 0
+			end
+		end
+	end
+
+declare @valido bit
+exec sp_valida_rg '538227679', @valido output
+print @valido
