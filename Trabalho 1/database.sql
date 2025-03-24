@@ -98,7 +98,33 @@ as
 			end
 		end
 	end
-
+	
+--teste
 declare @valido bit
 exec sp_valida_rg '120300011', @valido output
+print @valido
+
+create procedure sp_valida_senha(@senha varchar(35), @senha_valida bit output)
+as
+	set @senha_valida = 0
+	--verifica se tem no minimo 8 caracteres
+	if (len(@senha) >= 8)
+	begin
+		declare @i	int
+		set @i = 1
+		while (@i <= len(@senha))
+		begin
+			if (ISNUMERIC(substring(@senha,@i,1)) = 1)
+			--se tiver pelo menos um numero, ela valida
+			begin
+				set @senha_valida = 1
+			end
+			set @i = @i + 1
+		end
+	end
+
+declare @valido bit
+exec sp_valida_senha 'senha123', @valido output
+print @valido
+exec sp_valida_senha 'senha', @valido output
 print @valido
