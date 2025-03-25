@@ -87,14 +87,14 @@ as
 			--comparacao entre resto e digito verificador
 			if ((@res % 11) != cast(substring(@rg, 9, 1) as int))
 			begin
-				set @rg_valido = 0
+				set @rg_valido = 2
 			end
 		end
 		else --se o ultimo digito for X, o resto precisa ser = 10
 		begin
 			if ((@res % 11) != 10)--se o resto nao for 10, invalida
 			begin
-				set @rg_valido = 0
+				set @rg_valido = 2
 			end
 		end
 	end
@@ -104,7 +104,9 @@ declare @valido bit
 exec sp_valida_rg '120300011', @valido output
 print @valido
 
-create procedure sp_valida_senha(@senha varchar(35), @senha_valida bit output)
+--=============================================================
+
+create procedure sp_valida_senha(@senha varchar(35), @senha_valida int output)
 as
 	set @senha_valida = 0
 	--verifica se tem no minimo 8 caracteres
@@ -121,10 +123,51 @@ as
 			end
 			set @i = @i + 1
 		end
+		 if (@senha_valida = 0)
+		 --se sair do while e ainda for 0 eh pq nao tem nenhum numero
+		 begin
+			set @senha_valida = 2 --vai retornar outro erro
+		 end
 	end
 
-declare @valido bit
+--teste
+declare @valido int
 exec sp_valida_senha 'senha123', @valido output
 print @valido
 exec sp_valida_senha 'senha', @valido output
+print @valido
+exec sp_valida_senha 'senhabcd', @valido output
+print @valido
+
+--=============================================================
+
+create procedure sp_valida_login (@rg char(9), @senha varchar(35), @login_valido int output)
+as
+	if ((select rg from cliente where rg = @rg) is null)
+	begin
+		set @login_valido = 0 --primeiro erro: RG nao cadastrado
+	end
+	else --se houver um RG cadastrado
+	begin
+		if ((select senha from cliente where rg = @rg) != @senha)
+		--se a senha for incorreta
+		begin
+			set @login_valido = 2
+		end
+		else --se a senha for correta
+		begin
+			set @login_valido = 1
+		end
+	end
+
+--teste
+insert into cliente values
+('538227679', 'Camilo', '11911112222', '01/02/1998', 'senha1234')
+
+declare @valido int
+exec sp_valida_login '123', 'senha1234', @valido output --RG nao cadastrado
+print @valido
+exec sp_valida_login '538227679', 'senha1234', @valido output --senha correta
+print @valido
+exec sp_valida_login '538227679', 'aaa', @valido output --senha incorreta
 print @valido
