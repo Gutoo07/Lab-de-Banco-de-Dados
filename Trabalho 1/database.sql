@@ -408,6 +408,18 @@ as
 			end
 		end catch
 	end
+	else if (upper(@opc) = 'D')
+	begin 
+		if ((select rg from medico where rg = @rg) is not null)
+		begin
+			delete from medico where rg = @rg
+			set @saida = 'Medico de RG: '+@rg+' excluido(a) com sucesso.'
+		end
+		else
+		begin
+			raiserror('Erro ao Excluir Medico: RG invalido.', 16, 1)
+		end	
+	end
 	else
 	begin
 		raiserror('Erro: Opcao Invalida', 16, 1)
@@ -453,5 +465,12 @@ print @saida
 declare @saida varchar(100)
 exec sp_medico 'u', '444987526', 'Medico AAA', '11955556666', 'Noite', 400.0, 3, @saida output
 print @saida
+
+select * from medico
+
+declare @saida varchar(100)
+exec sp_medico 'd', '123456789', 'Medico AAA', '11955556666', 'Noite', 400.0, 3, @saida output
+print @saida
+
 
 
