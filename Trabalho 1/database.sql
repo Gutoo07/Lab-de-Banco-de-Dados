@@ -59,7 +59,7 @@ create table consulta_material(
 )
 go
 --=============================================================
-create procedure sp_valida_rg(@rg varchar(9), @rg_valido bit output)
+create procedure sp_valida_rg(@rg varchar(9), @rg_valido int output)
 as
 
 	set @rg_valido = 1 --comecamos valido e tentaremos invalida-lo
@@ -85,7 +85,7 @@ as
 		if (substring(@rg, 9, 1) != 'X')--se o ultimo digito nao for X
 		begin
 			--comparacao entre resto e digito verificador
-			if ((@res % 11) != cast(substring(@rg, 9, 1) as int))
+			if ((@res % 11) != cast(substring(@rg, 9, 1) as decimal(7,2)))
 			begin
 				set @rg_valido = 2
 			end
@@ -171,3 +171,170 @@ exec sp_valida_login '538227679', 'senha1234', @valido output --senha correta
 print @valido
 exec sp_valida_login '538227679', 'aaa', @valido output --senha incorreta
 print @valido
+
+--=============================================================
+
+create procedure sp_valida_idade(@dt_nasc date, @idade_valida int output)
+as
+	if (@dt_nasc is null)--passou dt_nasc null
+	begin
+		set @idade_valida = 0
+	end
+	else
+	begin
+		if (DATEDIFF(year, @dt_nasc, getdate()) < 18)
+		begin
+			set @idade_valida = 2 -- menor de 18 anos
+		end
+		else if (DATEDIFF(year, @dt_nasc, getdate()) > 18)
+		begin
+			set @idade_valida = 1 --maior de 18 anos
+		end
+		else --vai fazer/ja fez 18 esse ano
+		begin --testar os meses
+			if (MONTH(GETDATE()) < MONTH(@dt_nasc))
+			begin
+				set @idade_valida = 2
+			end
+			else if (MONTH(GETDATE()) > MONTH(@dt_nasc))
+			begin
+				set @idade_valida = 1
+			end
+			else
+			begin --testar os dias
+				if (DAY(GETDATE()) < DAY(@dt_nasc))
+				begin
+					set @idade_valida = 2
+				end
+				else
+				begin
+					set @idade_valida = 1
+				end
+			end
+		end
+	end
+
+--teste
+declare @valido int
+exec sp_valida_idade '27/03/2007', @valido output
+print @valido
+
+declare @valido int
+exec sp_valida_idade '26/03/2007', @valido output
+print @valido
+
+--=============================================================
+
+create procedure sp_cliente	(@opc char(1), @rg char(9), @nome varchar(100), @telefone varchar(11),
+							@dt_nasc date, @senha varchar(35), @saida varchar(100) output)
+as
+	declare @rg_valido	int,
+			@senha_valida int
+
+	if (upper(@opc) = 'I')
+	--INSERIR CLIENTE
+	begin
+		if (@rg is not null and @nome is not null and @telefone is not null and @dt_nasc is not null and @senha is not null)
+		--se todos os campos do Cliente foram preenchidos para o INSERT
+		begin
+			if ((select rg from cliente where rg = @rg) is not null)
+			--se um Cliente com esse RG ja existir
+			begin
+				raiserror('Erro ao Inserir Cliente: este RG ja existe.', 16, 1)
+			end
+			else
+			begin
+				exec sp_valida_rg @rg, @rg_valido output
+				if (@rg_valido = 0)--se o comprimento foi invalido
+				begin
+					raiserror('Erro ao Inserir Cliente: comprimento do RG invalido.', 16, 1)
+				end
+				else if (@rg_valido = 2)--se o RG foi invalido
+				begin
+					raiserror('Erro ao Inserir Cliente: RG invalido.', 16, 1)
+				end
+				else--se o RG eh valido
+				begin
+					exec sp_valida_senha @senha, @senha_valida output
+					if (@senha_valida = 0)
+					begin --se o comprimento da senha foi invalido
+						raiserror('Erro ao Inserir Cliente: comprimendo da senha invalido.', 16, 1)
+					end
+					else if (@senha_valida = 2) --se a senha nao tem pelo menos 1 numero
+					begin
+						raiserror('Erro ao Inserir Cliente: a senha deve conter pelo menos um (1) numero.', 16 ,1)
+					end
+					else -- se a senha foi valida
+					begin
+						insert into cliente values
+						(@rg, @nome, @telefone, @dt_nasc, @senha)
+						set @saida = 'Cliente '+@nome+' inserido(a) com sucesso.'
+					end
+				end
+			end			
+		end
+		else --se algum campo do Cliente nao foi inserido para o INSERT
+		begin
+			raiserror('Erro ao Inserir Cliente: um ou mais campos estao em branco.', 16, 1)
+		end
+	end
+	else if (upper(@opc) = 'U')
+	begin
+		if (@rg is not null)
+		--se o RG for passado
+		begin
+			if ((select rg from cliente where rg = @rg) is null)
+			--se nao houver Cliente com este RG
+			begin
+				raiserror('Erro ao Atualizar: RG invalido.', 16, 1)
+			end
+			else
+			begin
+				exec sp_valida_senha @senha, @senha_valida output
+				if (@senha_valida = 0)
+				begin --se o comprimento da senha foi invalido
+					raiserror('Erro ao Inserir Cliente: comprimendo da senha invalido.', 16, 1)
+				end
+				else if (@senha_valida = 2) --se a senha nao tem pelo menos 1 numero
+				begin
+					raiserror('Erro ao Inserir Cliente: a senha deve conter pelo menos um (1) numero.', 16 ,1)
+				end
+				else -- se a senha foi valida
+				begin
+					update cliente 
+					set telefone = @telefone, dt_nasc = @dt_nasc, senha = @senha
+					where rg = @rg
+					set @saida = 'Cliente de RG: '+@rg+' atualizado(a) com sucesso.'
+				end
+			end
+		end
+		else
+		begin
+			raiserror('Erro ao atualizar: RG nao foi especificado', 16 ,1)
+		end
+	end
+	else
+	begin
+		raiserror('Erro: Opcao Invalida', 16, 1)
+	end
+
+--teste
+declare @saida varchar(100)
+exec sp_cliente 'i', '311425471', 'Marcelo', '11933334444', '03/03/2003', 'senhamarcelo3', @saida output
+print @saida
+
+declare @saida varchar(100)
+exec sp_cliente 'i', '311425471', 'Marcelo', '11933334444', '03/03/2003', 'senhamarcelo3', @saida output
+print @saida
+
+declare @saida varchar(100)
+exec sp_cliente 'u', null, 'Marcelo Diaz', '11933334444', '03/03/2003', 'senhamarcelo333', @saida output
+print @saida
+
+declare @saida varchar(100)
+exec sp_cliente 'i', '31142547', 'Lucas', '11933334444', '03/03/2003', 'senhamarcelo3', @saida output
+print @saida
+
+
+delete from cliente
+select * from cliente
