@@ -335,6 +335,123 @@ declare @saida varchar(100)
 exec sp_cliente 'i', '31142547', 'Lucas', '11933334444', '03/03/2003', 'senhamarcelo3', @saida output
 print @saida
 
-
-delete from cliente
 select * from cliente
+
+--=============================================================
+
+create procedure sp_medico	(@opc char(1), @rg char(9), @nome varchar(100), @telefone varchar(11), @periodo varchar(5),
+							@valor_consulta decimal(7,2), @especialidade int, @saida varchar(100) output)
+as
+	declare @rg_valido int
+					
+	if (upper(@opc) = 'I')
+	--INSERIR MEDICO
+	begin
+		exec sp_valida_rg @rg, @rg_valido output
+		if (@rg_valido = 0)--se o comprimento foi invalido
+		begin
+			raiserror('Erro ao Inserir Medico: comprimento do RG invalido.', 16, 1)
+		end
+		else if (@rg_valido = 2)--se o RG foi invalido
+		begin
+			raiserror('Erro ao Inserir Medico: RG invalido.', 16, 1)
+		end
+		else--se o RG eh valido
+		begin try
+			insert into medico values
+			(@rg, @nome, @telefone, @periodo, @valor_consulta, @especialidade)
+			set @saida = 'Medico '+@nome+' inserido(a) com sucesso.'
+		end try
+		begin catch
+			set @saida = ERROR_MESSAGE()
+			if (@saida like '%NULL%')--algum campo em branco
+			begin
+				raiserror('Erro ao Inserir Medico: um ou mais campos em branco.', 16, 1)
+			end
+			else if (@saida like '%PK%')--primary key duplicada
+			begin
+				raiserror('Erro ao Inserir: RG ja cadastrado.', 16, 1)
+			end
+			else if (@saida like '%FK%')
+			begin
+				raiserror('Erro ao Inserir: Especialidade invalida.', 16, 1)
+			end
+			else
+			begin
+				raiserror('Erro desconhecido ao Inserir Medico.', 16, 1)
+			end
+		end catch
+	end
+	else if (upper(@opc) = 'U')
+	begin
+		if ((select rg from medico where rg = @rg) is null)
+		--se nao houver Medico com este RG
+		begin
+			raiserror('Erro ao Atualizar Medico: RG invalido.', 16, 1)
+		end
+		else
+		begin try
+			update medico 
+			set nome = @nome, telefone = @telefone, periodo = @periodo, valor_consulta = @valor_consulta, especialidade = @especialidade
+			where rg = @rg
+			set @saida = 'Medico de RG: '+@rg+' atualizado(a) com sucesso.'
+		end try
+		begin catch
+			set @saida = ERROR_MESSAGE()
+			if (@saida like '%NULL%')
+			begin
+				raiserror('Erro ao Atualizar Medico: um ou mais campos em branco.', 16 ,1)
+			end
+			else if (@saida like '%FK%')
+			begin
+				raiserror('Erro ao Inserir: Especialidade invalida.', 16, 1)
+			end
+		end catch
+	end
+	else
+	begin
+		raiserror('Erro: Opcao Invalida', 16, 1)
+	end
+
+--teste
+insert into medico values
+('123456789', 'Medico 1', '11912345678', 'Tarde', 300.0, 1)
+
+insert into especialidade values
+(1, 'E1'),
+(2, 'E2')
+
+insert into medico values
+('123456789', 'Medico 1', '11912345678', 'Tarde', 300.0, 1)
+
+declare @saida varchar(100)
+exec sp_medico 'i', '123456789', 'Medico a', '11955556666', 'Noite', 400.0, 1, @saida output
+print @saida
+
+declare @saida varchar(100)
+exec sp_medico 'i', '444987526', 'Medico a', '11955556666', 'Noite', 400.0, 1, @saida output
+print @saida
+
+declare @saida varchar(100)
+exec sp_medico 'i', null, 'Medico a', '11955556666', 'Noite', 400.0, 1, @saida output
+print @saida
+
+declare @saida varchar(100)
+exec sp_medico 'u', '444987526', 'Medico AAA', '11955556666', 'Noite', 400.0, 1, @saida output
+print @saida
+
+select * from medico
+
+declare @saida varchar(100)
+exec sp_medico 'u', '123456789', 'Medico AAA', '11955556666', 'Noite', 400.0, 1, @saida output
+print @saida
+
+declare @saida varchar(100)
+exec sp_medico 'u', '444987526', 'Medico AAA', null, 'Noite', 400.0, 1, @saida output
+print @saida
+
+declare @saida varchar(100)
+exec sp_medico 'u', '444987526', 'Medico AAA', '11955556666', 'Noite', 400.0, 3, @saida output
+print @saida
+
+
