@@ -425,52 +425,80 @@ as
 		raiserror('Erro: Opcao Invalida', 16, 1)
 	end
 
+--=============================================================
+
+create procedure sp_especialidade (@opc char(1), @id int, @nome varchar(30), @saida varchar(100) output)
+as
+	if(upper(@opc) = 'I')
+	begin
+		begin try
+			insert into especialidade values
+			(@id, @nome)
+			set @saida = 'Especialidade '+@nome+' inserido(a) com sucesso.'
+		end try
+		begin catch
+			if (ERROR_MESSAGE() like '%NULL%')
+			begin
+				raiserror('Erro ao Inserir Especialidade: um ou mais campos em branco.', 16, 1)
+			end
+			else if (ERROR_MESSAGE() like '%PK%')
+			begin
+				raiserror('Erro ao Inserir Especialidade: ID ja existe.', 16 ,1)
+			end
+			else
+			begin
+				raiserror('Erro desconhecido ao Inserir Especialidade.', 16, 1)
+			end
+		end catch
+	end
+	else if (upper(@opc) = 'U')
+	begin
+		begin try
+			update especialidade
+			set nome = @nome where id = @id
+			set @saida = 'Especialidade #'+cast(@id as varchar(5))+' atualizado(a) com sucesso.'
+		end try
+		begin catch
+			if (ERROR_MESSAGE() like '%NULL%')
+			begin
+				raiserror('Erro ao Inserir Especialidade: um ou mais campos em branco.', 16, 1)
+			end
+			else
+			begin
+				raiserror('Erro desconhecido ao Inserir Especialidade.', 16, 1)
+			end			
+		end catch
+	end
+	else if (upper(@opc) = 'D')
+	begin
+		if (@id is not null)
+		begin
+			delete from especialidade
+			where id = @id
+			set @saida = 'Especialidade #'+cast(@id as varchar(5))+'  excluido(a) com sucesso.'
+		end
+		else
+		begin
+			raiserror('Erro ao Excluir Especialidade: ID nao especificado', 16, 1)
+		end
+	end
+
 --teste
-insert into medico values
-('123456789', 'Medico 1', '11912345678', 'Tarde', 300.0, 1)
+select * from especialidade
 
-insert into especialidade values
-(1, 'E1'),
-(2, 'E2')
-
-insert into medico values
-('123456789', 'Medico 1', '11912345678', 'Tarde', 300.0, 1)
-
-declare @saida varchar(100)
-exec sp_medico 'i', '123456789', 'Medico a', '11955556666', 'Noite', 400.0, 1, @saida output
+declare @saida varchar (100)
+exec sp_especialidade 'i', 3, 'E3', @saida output
 print @saida
 
-declare @saida varchar(100)
-exec sp_medico 'i', '444987526', 'Medico a', '11955556666', 'Noite', 400.0, 1, @saida output
-print @saida
-
-declare @saida varchar(100)
-exec sp_medico 'i', null, 'Medico a', '11955556666', 'Noite', 400.0, 1, @saida output
-print @saida
-
-declare @saida varchar(100)
-exec sp_medico 'u', '444987526', 'Medico AAA', '11955556666', 'Noite', 400.0, 1, @saida output
-print @saida
-
-select * from medico
-
-declare @saida varchar(100)
-exec sp_medico 'u', '123456789', 'Medico AAA', '11955556666', 'Noite', 400.0, 1, @saida output
-print @saida
-
-declare @saida varchar(100)
-exec sp_medico 'u', '444987526', 'Medico AAA', null, 'Noite', 400.0, 1, @saida output
-print @saida
-
-declare @saida varchar(100)
-exec sp_medico 'u', '444987526', 'Medico AAA', '11955556666', 'Noite', 400.0, 3, @saida output
-print @saida
-
-select * from medico
-
-declare @saida varchar(100)
-exec sp_medico 'd', '123456789', 'Medico AAA', '11955556666', 'Noite', 400.0, 3, @saida output
+declare @saida varchar (100)
+exec sp_especialidade 'u', 3, 'Especialidade 3', @saida output
 print @saida
 
 
+declare @saida varchar (100)
+exec sp_especialidade 'd', null, 'Especialidade 3', @saida output
+print @saida
 
+declare @saida varchar (100)
+exec sp_especialidade 'd', 3, null, @saida output
+print @saida
