@@ -483,22 +483,83 @@ as
 		end
 	end
 
+--=============================================================
+
+create procedure sp_material (@opc char(1), @id int, @nome varchar(30), @valor decimal(7,2), @saida varchar(100) output)
+as
+	if(upper(@opc) = 'I')
+	begin
+		begin try
+			insert into material values
+			(@id, @nome, @valor)
+			set @saida = 'Material '+@nome+' inserido com sucesso.'
+		end try
+		begin catch
+			if (ERROR_MESSAGE() like '%NULL%')
+			begin
+				raiserror('Erro ao Inserir Material: um ou mais campos em branco.', 16, 1)
+			end
+			else if (ERROR_MESSAGE() like '%PK%')
+			begin
+				raiserror('Erro ao Inserir Material: ID ja existe.', 16 ,1)
+			end
+			else
+			begin
+				raiserror('Erro desconhecido ao Inserir Material.', 16, 1)
+			end
+		end catch
+	end
+	else if (upper(@opc) = 'U')
+	begin
+		begin try
+			update material
+			set nome = @nome, valor = @valor where id = @id
+			set @saida = 'Material #'+cast(@id as varchar(5))+' atualizado com sucesso.'
+		end try
+		begin catch
+			if (ERROR_MESSAGE() like '%NULL%')
+			begin
+				raiserror('Erro ao Inserir Material: um ou mais campos em branco.', 16, 1)
+			end
+			else
+			begin
+				raiserror('Erro desconhecido ao Inserir Material.', 16, 1)
+			end			
+		end catch
+	end
+	else if (upper(@opc) = 'D')
+	begin
+		if (@id is not null)
+		begin
+			delete from material
+			where id = @id
+			set @saida = 'Material #'+cast(@id as varchar(5))+'  excluido com sucesso.'
+		end
+		else
+		begin
+			raiserror('Erro ao Excluir Material: ID nao especificado', 16, 1)
+		end
+	end
+
 --teste
-select * from especialidade
+select * from material
 
-declare @saida varchar (100)
-exec sp_especialidade 'i', 3, 'E3', @saida output
+declare @saida varchar(100)
+exec sp_material 'i', 1, 'Material 1', 20.50, @saida output
 print @saida
 
-declare @saida varchar (100)
-exec sp_especialidade 'u', 3, 'Especialidade 3', @saida output
+declare @saida varchar(100)
+exec sp_material 'i', 2, 'Material 2', 5.0, @saida output
 print @saida
 
-
-declare @saida varchar (100)
-exec sp_especialidade 'd', null, 'Especialidade 3', @saida output
+declare @saida varchar(100)
+exec sp_material 'u', 1, 'Material A', 20.50, @saida output
 print @saida
 
-declare @saida varchar (100)
-exec sp_especialidade 'd', 3, null, @saida output
+declare @saida varchar(100)
+exec sp_material 'd', 1, null, 20.50, @saida output
+print @saida
+
+declare @saida varchar(100)
+exec sp_material 'i', null, 'Material 1', 20.50, @saida output
 print @saida
