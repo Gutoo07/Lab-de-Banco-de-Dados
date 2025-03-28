@@ -37,17 +37,26 @@ create table medico(
 )
 go
 create table consulta(
-	id				int				not null,
+	id	int		identity(1,1)		not null,
 	clienteRg			char(9)		not null,
 	medicoRg			char(9)		not null,
 	dia					date		not null,
 	hora				time		not null,
 	particular			bit			not null,
+	valor			decimal(7,2)	not null,
 	cod_autorizacao	varchar(5)		null
 	primary key(id)
 	foreign key(clienteRg) references cliente(rg),
 	foreign key(medicoRg) references medico(rg)
 )
+--teste
+insert into consulta values
+('311425471', '355908761', '28/03/2025', '11:00', 0, 200.0, null)
+
+select * from consulta
+
+select * from medico
+
 go
 create table consulta_material(
 	consultaId		int		not null,
@@ -147,6 +156,10 @@ as
 	begin
 		set @login_valido = 0 --primeiro erro: RG nao cadastrado
 	end
+	else if (@senha is null)
+	begin
+		set @login_valido = 2
+	end
 	else --se houver um RG cadastrado
 	begin
 		if ((select senha from cliente where rg = @rg) != @senha)
@@ -159,11 +172,8 @@ as
 			set @login_valido = 1
 		end
 	end
-
---teste
-insert into cliente values
-('538227679', 'Camilo', '11911112222', '01/02/1998', 'senha1234')
-
+	
+--testes
 declare @valido int
 exec sp_valida_login '123', 'senha1234', @valido output --RG nao cadastrado
 print @valido
@@ -425,6 +435,31 @@ as
 		raiserror('Erro: Opcao Invalida', 16, 1)
 	end
 
+declare @saida varchar(100)
+exec sp_medico 'i', '466225660', 'Medico 1', '11955556666', 'Manha', 200.0, 1, @saida output
+print @saida
+
+declare @saida varchar(100)
+exec sp_medico 'i', '355908761', 'Medico 2', '11955556666', 'Tarde', 200.0, 1, @saida output
+print @saida
+
+declare @saida varchar(100)
+exec sp_medico 'i', '254648435', 'Medico 3', '11955556666', 'Noite', 200.0, 1, @saida output
+print @saida
+
+declare @saida varchar(100)
+exec sp_medico 'i', '187333312', 'Medico 4', '11988889999', 'Manha', 300.0, 2, @saida output
+print @saida
+
+declare @saida varchar(100)
+exec sp_medico 'i', '12738988X', 'Medico 5', '11988889999', 'Tarde', 300.0, 2, @saida output
+print @saida
+
+declare @saida varchar(100)
+exec sp_medico 'i', '289728137', 'Medico 6', '11988889999', 'Noite', 300.0, 2, @saida output
+print @saida
+
+select * from medico
 --=============================================================
 
 create procedure sp_especialidade (@opc char(1), @id int, @nome varchar(30), @saida varchar(100) output)
@@ -541,25 +576,100 @@ as
 		end
 	end
 
---teste
-select * from material
+--=============================================================
+
+create procedure sp_consulta	(@opc char(1), @cliente_rg char(9), @senha varchar(35),
+								@especialidade varchar(30), @dia date, @hora time,
+								@particular bit, @codigo_autorizacao varchar(5),
+								@saida varchar(100) output)
+as
+	if (upper(@opc) = 'I')
+	begin
+		declare @login_valido int
+		exec sp_valida_login @cliente_rg, @senha, @login_valido output
+		if (@login_valido = 0)
+		begin
+			raiserror('Erro ao Cadastrar Consulta: RG de Cliente invalido.', 16, 1)
+		end
+		else if (@login_valido = 2)
+		begin
+			raiserror('Erro ao Cadastrar Consulta: Senha incorreta.', 16, 1)
+		end
+		else
+		begin
+			declare @medico_rg char(9),
+					@periodo varchar(5),
+					@valor	decimal(7,2)
+
+			--achar medico que trabalha no Turno respectivo à @hora solicitada
+			if (@hora < '11:00')--Periodo Manha
+			begin
+				set @periodo = 'Manha'
+			end
+			else if (@hora < '16:00')--Periodo Tarde
+			begin
+				set @periodo = 'Tarde'
+			end
+			else if (@hora < '21:00')--Periodo Noite
+			begin
+				set @periodo = 'Noite'
+			end
+
+			set @medico_rg = --medico aleatorio que nao tenha consulta nesse dia nessa hora
+			(select top 1 percent rg from medico where periodo = @periodo and especialidade = @especialidade and rg not in
+			(select medicoRg from consulta where dia = @dia and hora = @hora)
+			order by newid())
+
+			if (@medico_rg is null)--nao tem medico disponivel nessas condicoes
+			begin
+				raiserror('Erro ao Cadastrar Consulta: Nao ha medicos disponiveis; tente outro horario.', 16, 1)
+			end
+			else
+			begin			
+				set @valor = (select valor_consulta from medico where rg = @medico_rg)
+				begin try
+					insert into consulta values
+					(@cliente_rg, @medico_rg, @dia, @hora, @particular, @valor, @codigo_autorizacao)
+					set @saida = 'Consulta com medico de RG: '+@medico_rg+', as '+cast(@hora as varchar(5))+' em '+convert(char(10), @dia, 103)+'.'
+				end try
+				begin catch
+					raiserror('Erro desconhecido ao Cadastrar Consulta', 16, 1)
+				end catch
+			end
+		end
+	end
+	else
+	begin
+		raiserror('Opcao invalida', 16, 1)
+	end
+
+--testes
+declare @timetest time,
+		@timetest2 time
+set @timetest = '06:00'
+set @timetest2 = '14:50'
+--select cast(@timetest as varchar(5))+ ' ' + cast(@timetest2 as varchar(5))
+if (@timetest > @timetest2)
+begin
+	print @timetest
+end
+else
+begin
+	print @timetest2
+end
 
 declare @saida varchar(100)
-exec sp_material 'i', 1, 'Material 1', 20.50, @saida output
+exec sp_consulta 'i', '311425471', 'senhamarcelo333', 2, '31/03/2025', '11:00', 0, null, @saida output
 print @saida
 
-declare @saida varchar(100)
-exec sp_material 'i', 2, 'Material 2', 5.0, @saida output
-print @saida
 
-declare @saida varchar(100)
-exec sp_material 'u', 1, 'Material A', 20.50, @saida output
-print @saida
+select c.clienteRg, c.medicoRg,  m.especialidade, c.dia, cast(c.hora as varchar(5)) as hora, m.periodo, c.valor
+from consulta c
+inner join medico m
+on c.medicoRg = m.rg
+order by hora
 
-declare @saida varchar(100)
-exec sp_material 'd', 1, null, 20.50, @saida output
-print @saida
+select rg, especialidade, periodo
+from medico
+order by periodo
 
-declare @saida varchar(100)
-exec sp_material 'i', null, 'Material 1', 20.50, @saida output
-print @saida
