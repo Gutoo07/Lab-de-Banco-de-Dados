@@ -642,12 +642,16 @@ as
 						and (datediff(day, getdate() - 30, c.dia) >= 0)
 						order by c.id desc) > 0.0)
 					begin
-						print 'a'
 						set @valor = 0.0
 					end
 					else
 					begin
 						set @valor = (select valor_consulta from medico where rg = @medico_rg)
+						--se for pelo Plano de Saude, o Plano para 50% do valor, por exemplo
+						if (@particular = 1)
+						begin
+							set @valor = @valor * 0.5
+						end
 					end
 					begin try
 						insert into consulta values
@@ -730,4 +734,12 @@ print @saida
 
 declare @saida varchar(100)
 exec sp_consulta 'i', '311425471', 'senhamarcelo333', 2, '27/04/2025', '19:30', 0, null, @saida output
+print @saida
+
+declare @saida varchar(100)
+exec sp_consulta 'i', '311425471', 'senhamarcelo333', 1, '25/04/2025', '19:30', 0, null, @saida output
+print @saida
+
+declare @saida varchar(100)
+exec sp_consulta 'i', '311425471', 'senhamarcelo333', 1, '26/04/2025', '19:30', 1, null, @saida output
 print @saida
