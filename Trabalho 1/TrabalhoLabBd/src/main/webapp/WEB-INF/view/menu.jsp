@@ -14,7 +14,6 @@
 	<div align="center">
 		<table class="table table-primary table-striped-columns">
 			<tr>
-
 				<td align="center">
 					<!-- Toda chamada vai passar pela classe de controle antes de ser reendereçada pro jsp -->
 					<a href="cliente">Cliente</a>
@@ -31,9 +30,9 @@
 				<td align="center">
 					<a href="material">Material</a>
 				</td>
-
 			</tr>
 		</table>
 	</div>
+	<br />
 </body>
 </html>
