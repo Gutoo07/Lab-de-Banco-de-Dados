@@ -16,7 +16,28 @@
 	<div align="center">
 		<br />
 		<h1>Clínica</h1>
+		<br />		
+	</div>
+	<div class="conteiner" align="center">
+		<h1>Cadastro de Clientes</h1>
 		<br />
+		<form action="index" method="post">
+			<table>
+				<tr style="border-bottom: solid white 12px;">
+					<td colspan="3"> 
+						<input type="text" min="0" name="rg" id="rg" placeholder="RG"/>'>
+					</td>				
+				</tr>
+				<tr style="border-bottom: solid white 12px;">
+					<td colspan="4">
+						<input type="text" name="senha" id="senha" placeholder="Senha"/>'>
+					</td>
+				</tr>
+				<tr style="border-bottom: solid white 12px;">
+					<td><input style="margin: 0 2px;" type="submit" id="botao" name="botao" value="Login" class="btn btn-dark"></td>
+				</tr>
+			</table>	
+		</form>	
 	</div>
 </body>
 </html>
